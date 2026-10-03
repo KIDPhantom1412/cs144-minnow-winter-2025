@@ -22,7 +22,15 @@ public:
   bool has_error() const { return error_; }; // Has the stream had an error?
 
 protected:
+  uint64_t buffered_size() const;
+
+protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
+  std::string buffer;
+  uint64_t head {};
+  uint64_t tail {};
+  bool is_closed_ {};
+  uint64_t bytes_pushed_ {};
   uint64_t capacity_;
   bool error_ {};
 };
