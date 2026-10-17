@@ -26,9 +26,9 @@ protected:
 
 protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
-  std::string buffer;
-  uint64_t head {};
-  uint64_t tail {};
+  std::string buffer_;
+  uint64_t head_ {};
+  uint64_t tail_ {};
   bool is_closed_ {};
   uint64_t bytes_pushed_ {};
   uint64_t capacity_;

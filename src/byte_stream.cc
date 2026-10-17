@@ -4,28 +4,28 @@
 
 using namespace std;
 
-ByteStream::ByteStream( uint64_t capacity ) : buffer( capacity + 1, '\0' ), capacity_( capacity ) {}
+ByteStream::ByteStream( uint64_t capacity ) : buffer_( capacity + 1, '\0' ), capacity_( capacity ) {}
 
 uint64_t ByteStream::buffered_size() const
 {
-  if ( tail >= head ) {
-    return tail - head;
+  if ( tail_ >= head_ ) {
+    return tail_ - head_;
   }
-  return static_cast<uint64_t>( buffer.size() ) - head + tail;
+  return static_cast<uint64_t>( buffer_.size() ) - head_ + tail_;
 }
 
 void Writer::push( string data )
 {
   const uint64_t length = min( static_cast<uint64_t>( data.size() ), available_capacity() );
   bytes_pushed_ += length;
-  const uint64_t bytes_to_end = static_cast<uint64_t>( buffer.size() ) - tail;
+  const uint64_t bytes_to_end = static_cast<uint64_t>( buffer_.size() ) - tail_;
   if ( length <= bytes_to_end ) {
-    copy( data.begin(), data.begin() + length, buffer.begin() + tail );
+    copy( data.begin(), data.begin() + length, buffer_.begin() + tail_ );
   } else {
-    copy( data.begin(), data.begin() + bytes_to_end, buffer.begin() + tail );
-    copy( data.begin() + bytes_to_end, data.begin() + length, buffer.begin() );
+    copy( data.begin(), data.begin() + bytes_to_end, buffer_.begin() + tail_ );
+    copy( data.begin() + bytes_to_end, data.begin() + length, buffer_.begin() );
   }
-  tail = ( tail + length ) % buffer.size();
+  tail_ = ( tail_ + length ) % buffer_.size();
 }
 
 void Writer::close()
@@ -50,13 +50,13 @@ uint64_t Writer::bytes_pushed() const
 
 string_view Reader::peek() const
 {
-  const uint64_t length = min( static_cast<uint64_t>( buffer.size() ) - head, bytes_buffered() );
-  return string_view( buffer.begin() + head, buffer.begin() + head + length );
+  const uint64_t length = min( static_cast<uint64_t>( buffer_.size() ) - head_, bytes_buffered() );
+  return string_view( buffer_.begin() + head_, buffer_.begin() + head_ + length );
 }
 
 void Reader::pop( uint64_t len )
 {
-  head = ( head + min( len, bytes_buffered() ) ) % buffer.size();
+  head_ = ( head_ + min( len, bytes_buffered() ) ) % buffer_.size();
 }
 
 bool Reader::is_finished() const
