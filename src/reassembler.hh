@@ -1,12 +1,24 @@
 #pragma once
 
+#include <cstdint>
+#include <limits>
+#include <string>
+#include <sys/types.h>
+#include <vector>
+
 #include "byte_stream.hh"
 
 class Reassembler
 {
 public:
   // Construct Reassembler to write into given ByteStream.
-  explicit Reassembler( ByteStream&& output ) : output_( std::move( output ) ) {}
+  explicit Reassembler( ByteStream&& output )
+    : output_( std::move( output ) )
+    , buffer_( output_.writer().available_capacity(), '\0' )
+    , start_( 0 )
+    , last_byte_( std::numeric_limits<uint64_t>::max() )
+    , bitmap_( output_.writer().available_capacity() )
+  {}
 
   /*
    * Insert a new substring to be reassembled into a ByteStream.
@@ -43,4 +55,8 @@ public:
 
 private:
   ByteStream output_;
+  std::string buffer_;
+  uint64_t start_;
+  uint64_t last_byte_;
+  std::vector<bool> bitmap_;
 };
