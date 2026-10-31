@@ -4,14 +4,21 @@
 #include "tcp_receiver_message.hh"
 #include "tcp_sender_message.hh"
 
+#include <cstdint>
 #include <functional>
+#include <queue>
+#include <utility>
 
 class TCPSender
 {
 public:
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( ByteStream&& input, Wrap32 isn, uint64_t initial_RTO_ms )
-    : input_( std::move( input ) ), isn_( isn ), initial_RTO_ms_( initial_RTO_ms )
+    : input_( std::move( input ) )
+    , isn_( isn )
+    , initial_RTO_ms_( initial_RTO_ms )
+    , RTO_ms_( initial_RTO_ms )
+    , deadline_( initial_RTO_ms )
   {}
 
   /* Generate an empty TCPSenderMessage */
@@ -39,7 +46,17 @@ public:
 private:
   Reader& reader() { return input_.reader(); }
 
+  void transmit_and_add_timer( const TCPSenderMessage& msg, const TransmitFunction& transmit );
+
   ByteStream input_;
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
+  uint16_t window_size_ { 1 }; // 初始窗口大小是1，只发送SYN
+  uint64_t ackno_ {};
+  uint64_t nextno_ {};
+  uint64_t now_ {};
+  uint64_t RTO_ms_;
+  uint64_t deadline_ {};
+  std::queue<TCPSenderMessage> queue_ {};
+  bool FIN_ {}; // FIN报文是否发送过
 };
