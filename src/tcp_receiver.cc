@@ -15,7 +15,7 @@ void TCPReceiver::receive( TCPSenderMessage message )
     return;
   }
   // 报文的合法性校验
-  if ( !SYN && !message.SYN ) {
+  if ( !SYN_ && !message.SYN ) {
     return; // 混沌期(SYN 未到),尚无序号约定:任何段都不能留下任何状态
   }
   // 非 SYN 段落在绝对序号 0 即非法(那是 SYN 的专属槽位),直接忽略:
@@ -24,14 +24,14 @@ void TCPReceiver::receive( TCPSenderMessage message )
   //   2) 必须在 unwrap 后的绝对坐标上判断,不能比 32 位 seqno == ISN:
   //      seqno 每 2^32 回绕一次,流跑满一圈后同一 seqno 是合法段。
   // checkpoint 用"下一个期望的绝对序号",且须与下面 insert 保持一致,坐标才对得上。
-  if ( !message.SYN && message.seqno.unwrap( ISN, reassembler_.writer().bytes_pushed() + 1 ) == 0 ) {
+  if ( !message.SYN && message.seqno.unwrap( isn_, reassembler_.writer().bytes_pushed() + 1 ) == 0 ) {
     return;
   }
 
   // 初次收到SYN报文
-  if ( !SYN && message.SYN ) {
-    SYN = true;
-    ISN = message.seqno;
+  if ( !SYN_ && message.SYN ) {
+    SYN_ = true;
+    isn_ = message.seqno;
   }
 
   // 两套坐标的换算:seqno 空间里 SYN 占一位(绝对 0),而 Reassembler 没有
@@ -42,7 +42,7 @@ void TCPReceiver::receive( TCPSenderMessage message )
   // 两步合并就是 - !message.SYN:非 SYN 段减 1,SYN 段减 0。
   // FIN 不在此处记账:只把"段尾即流尾"的线索(is_last_substring)交给
   // Reassembler,何时生效由它按序重组、关流(is_closed)来判定。
-  reassembler_.insert( message.seqno.unwrap( ISN, reassembler_.writer().bytes_pushed() + 1 ) - !message.SYN,
+  reassembler_.insert( message.seqno.unwrap( isn_, reassembler_.writer().bytes_pushed() + 1 ) - !message.SYN,
                        message.payload,
                        message.FIN );
 }
@@ -54,10 +54,10 @@ TCPReceiverMessage TCPReceiver::send() const
   }
   uint16_t window_size
     = min( static_cast<uint64_t>( numeric_limits<uint16_t>::max() ), writer().available_capacity() );
-  if ( !SYN ) {
+  if ( !SYN_ ) {
     return { nullopt, window_size, false };
   }
-  return { Wrap32::wrap( SYN + reassembler_.writer().bytes_pushed() + reassembler_.writer().is_closed(), ISN ),
+  return { Wrap32::wrap( SYN_ + reassembler_.writer().bytes_pushed() + reassembler_.writer().is_closed(), isn_ ),
            window_size,
            false };
 }
