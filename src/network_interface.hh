@@ -4,8 +4,11 @@
 #include "ethernet_frame.hh"
 #include "ipv4_datagram.hh"
 
+#include <cstdint>
+#include <map>
 #include <memory>
 #include <queue>
+#include <utility>
 
 // A "network interface" that connects IP (the internet layer, or network layer)
 // with Ethernet (the network access layer, or link layer).
@@ -82,4 +85,25 @@ private:
 
   // Datagrams that have been received
   std::queue<InternetDatagram> datagrams_received_ {};
+
+  // 当前时间（毫秒），由 tick() 累加。下面所有时间戳都和它相减。
+  uint64_t now_ {};
+
+  // 同一下一跳的 ARP 请求在此时间内不重发（毫秒）
+  static constexpr uint64_t ARP_REQUEST_COOLDOWN_MS = 5 * 1000;
+
+  // 学到的 IP 到以太网地址映射的有效期（毫秒）
+  static constexpr uint64_t ARP_MAPPING_TTL_MS = 30 * 1000;
+
+  // IP -> (学到映射的时刻, 以太网地址)。键是主机序的 IPv4。
+  // pair.first 是时间戳，pair.second 是 EthernetAddress。
+  std::map<uint32_t, std::pair<uint64_t, EthernetAddress>> cache_ {};
+
+  // 下一跳 IP -> 最近一次发出 ARP 请求的时刻。值是时间戳，不是 MAC。
+  // 5 秒从这次请求发出算起，之后到达的数据报不会刷新它。
+  std::map<uint32_t, uint64_t> requested_ {};
+
+  // 还在等 ARP reply 的数据报，按下一跳 IP 分组。
+  // 和 requested_ 共用同一次请求的寿命：请求过期时，这个 IP 下的队列整队丢掉。
+  std::map<uint32_t, std::queue<InternetDatagram>> datagrams_to_send_ {};
 };
