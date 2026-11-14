@@ -3,6 +3,9 @@
 #include "exception.hh"
 #include "network_interface.hh"
 
+#include <cstddef>
+#include <cstdint>
+#include <map>
 #include <optional>
 
 // \brief A router that has multiple network interfaces and
@@ -34,4 +37,15 @@ public:
 private:
   // The router's collection of network interfaces
   std::vector<std::shared_ptr<NetworkInterface>> interfaces_ {};
+
+  // 外层 key 是按前缀掩完的网络地址，内层 key 是前缀长度。
+  // 掩完相同的几条路由落在同一个外层项里，例如 10.0.0.0/8 和 10.0.0.0/16。
+  // 值是下一跳（空表示直连）和出接口编号。
+  using PrefixTable = std::map<uint8_t, std::pair<std::optional<Address>, size_t>>;
+  std::map<uint32_t, PrefixTable> routing_table_ {};
+
+  // 在同一个网络地址下，从长到短找第一条能匹配 dst 的前缀。
+  std::optional<PrefixTable::iterator> find_longest_prefix( PrefixTable& prefix_table,
+                                                            uint32_t network_address,
+                                                            uint32_t dst );
 };
